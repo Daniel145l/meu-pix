@@ -1,4 +1,4 @@
-# PixFlow - Sistema Bancário e PIX
+# Meu Pix - Sistema Bancário e PIX
 
 Repositório oficial do projeto final da disciplina de **Arquitetura de Software**, desenvolvido com foco no domínio de **Sistema Bancário e PIX**.
 
