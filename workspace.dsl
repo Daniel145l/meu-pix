@@ -1,9 +1,9 @@
-workspace "PixFlow - Sistema Bancário e PIX" {
+workspace "Meu Pix - Sistema Bancário e PIX" {
 
     model {
         user = person "Usuário do Banco" "Realiza consultas de saldo, gerencia chaves PIX e faz transferências."
         
-        system = softwareSystem "PixFlow System" "Sistema de simulação bancária e pagamentos via PIX." {
+        system = softwareSystem "Meu Pix System" "Sistema de simulação bancária e pagamentos via PIX." {
             webapp = container "Aplicação Web / Frontend" "Interface de usuário para interagir com o sistema." "Vue.js / TypeScript"
             apiGateway = container "Core Backend (Arquitetura Hexagonal)" "Gerencia rotas, adaptadores de entrada e as regras de negócio de contas e PIX." "Node.js / Express / TypeScript"
             database = container "Banco de Dados Relacional" "Armazena dados de usuários, contas, saldos e chaves PIX." "PostgreSQL / Supabase"
