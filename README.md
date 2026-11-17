@@ -48,6 +48,3 @@ Seguindo as exigências do trabalho, a arquitetura do sistema está documentada 
 * Francisco Kauan Pereira Cavalcante - 554089
 * Kleyton Kluesriton Ferreira Pereira - 555426
 * Lucas Ferreira Nobre - 554590
-* 
-
-* A divisão de tarefas e o progresso do desenvolvimento podem ser acompanhados diretamente através das abas de *Issues* e *Projects* deste repositório no GitHub.
