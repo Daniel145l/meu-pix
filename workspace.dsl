@@ -1,53 +1,103 @@
-workspace "PixFlow - Sistema Bancário e PIX" {
+workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Modelo C4) do projeto final de Arquitetura de Software." {
+
+    !identifiers hierarchical
 
     model {
-        user = person "Usuário do Banco" "Realiza consultas de saldo, gerencia chaves PIX e faz transferências."
-        
-        system = softwareSystem "PixFlow System" "Sistema de simulação bancária e pagamentos via PIX." {
-            webapp = container "Aplicação Web / Frontend" "Interface de usuário para interagir com o sistema." "Vue.js / TypeScript"
-            apiGateway = container "Core Backend (Arquitetura Hexagonal)" "Gerencia rotas, adaptadores de entrada e as regras de negócio de contas e PIX." "Node.js / Express / TypeScript"
-            database = container "Banco de Dados Relacional" "Armazena dados de usuários, contas, saldos e chaves PIX." "PostgreSQL / Supabase"
-            notificationService = container "Serviço de Notificações" "Envia alertas e comprovantes de operações concluídas." "Node.js Worker"
+        # ---------------------------------------------------------------
+        # Pessoas
+        # ---------------------------------------------------------------
+        usuario = person "Usuário do Banco" "Correntista que consulta saldo e extrato, gerencia chaves PIX, realiza transferências e recebe notificações das operações concluídas."
+
+        # ---------------------------------------------------------------
+        # Sistemas externos
+        # ---------------------------------------------------------------
+        spi = softwareSystem "Simulador SPI / DICT (BACEN)" "Sistema externo simulado: o DICT resolve chaves PIX de outras instituições e o SPI liquida ordens PIX interbancárias." {
+            tags "Sistema Externo"
         }
-        
-        externalBacen = softwareSystem "Simulador do SPI / BACEN" "Sistema externo simulado para liquidação de ordens PIX interbancárias."
 
-        # Relações de Contexto
-        user -> system "Usa para gerenciar dinheiro e enviar PIX"
-        system -> externalBacen "Liquida transações PIX"
+        # ---------------------------------------------------------------
+        # Sistema em foco
+        # ---------------------------------------------------------------
+        meuPix = softwareSystem "Meu Pix" "Carteira digital que simula contas bancárias, chaves PIX e transferências instantâneas." {
 
-        # Relações de Container
-        user -> webapp "Acessa via navegador"
-        webapp -> apiGateway "Faz requisições HTTPS/REST"
-        apiGateway -> database "Lê e grava dados de contas e transações"
-        apiGateway -> notificationService "Dispara eventos de transferência"
-        apiGateway -> externalBacen "Consulta e envia ordens PIX"
+            webapp = container "Aplicação Web" "Interface (SPA) para consultar saldo e extrato, gerenciar chaves PIX, enviar PIX e visualizar notificações." "Vue.js / TypeScript" {
+                tags "Web Browser"
+            }
+
+            coreBackend = container "Core Backend" "Núcleo de negócio em Arquitetura Hexagonal: expõe a API REST (adaptador de entrada) e executa as regras de contas, chaves e transferências PIX. Fala com o mundo externo apenas por portas de saída (repositórios, gateway SPI e publicador de eventos)." "Node.js / Express / TypeScript" {
+                tags "Hexagonal"
+            }
+
+            broker = container "Message Broker" "Fila/tópico de eventos de domínio (ex.: PixEnviado, PixRecebido, ChavePixCadastrada). Desacopla quem produz o evento de quem reage a ele." "RabbitMQ" {
+                tags "Fila"
+            }
+
+            notificationWorker = container "Serviço de Notificações" "Consumidor assíncrono dos eventos de domínio: gera comprovantes e notificações de operações concluídas e as registra para o usuário." "Node.js Worker / TypeScript"
+
+            database = container "Banco de Dados" "Armazena usuários, contas, saldos, chaves PIX, transações (extrato) e notificações." "PostgreSQL (Supabase)" {
+                tags "Banco de Dados"
+            }
+        }
+
+        # ---------------------------------------------------------------
+        # Relações — nível de Contexto (derivadas/implícitas dos containers)
+        # ---------------------------------------------------------------
+        usuario -> meuPix "Consulta saldo/extrato, gerencia chaves PIX e envia PIX"
+        meuPix -> usuario "Notifica operações concluídas"
+        meuPix -> spi "Resolve chaves de outras instituições e envia ordens PIX interbancárias"
+
+        # ---------------------------------------------------------------
+        # Relações — nível de Container
+        # ---------------------------------------------------------------
+        usuario -> meuPix.webapp "Acessa pelo navegador" "HTTPS"
+        meuPix.webapp -> meuPix.coreBackend "Faz chamadas à API (saldo, extrato, chaves, PIX, notificações)" "JSON / HTTPS (REST)"
+        meuPix.coreBackend -> meuPix.database "Lê e grava contas, chaves PIX e transações (débito e crédito na mesma transação)" "SQL / TCP"
+        meuPix.coreBackend -> meuPix.broker "Publica eventos de domínio após concluir a operação" "AMQP (assíncrono)"
+        meuPix.coreBackend -> spi "Consulta chave no DICT e envia ordem de pagamento ao SPI" "JSON / HTTPS (síncrono)"
+        meuPix.notificationWorker -> meuPix.broker "Consome eventos PixEnviado / PixRecebido" "AMQP (assíncrono)"
+        meuPix.notificationWorker -> meuPix.database "Registra notificações e comprovantes" "SQL / TCP"
+        meuPix.notificationWorker -> usuario "Envia notificação de operação concluída" "In-app / E-mail (simulado)"
     }
 
     views {
-        systemContext system "Contexto" {
+        systemContext meuPix "Contexto" "Nível 1 (C4) — o Meu Pix, quem o usa e com quais sistemas externos ele se comunica." {
             include *
-            autoLayout
+            autoLayout lr
         }
-        
-        container system "Containers" {
+
+        container meuPix "Containers" "Nível 2 (C4) — unidades executáveis/implantáveis do Meu Pix, suas tecnologias e mecanismos de comunicação." {
             include *
-            autoLayout
+            autoLayout lr
         }
-        
+
         styles {
+            element "Element" {
+                color #ffffff
+            }
             element "Person" {
                 background #08427b
-                color #ffffff
                 shape Person
             }
             element "Software System" {
                 background #1168bd
-                color #ffffff
+            }
+            element "Sistema Externo" {
+                background #999999
             }
             element "Container" {
                 background #438dd5
-                color #ffffff
+            }
+            element "Web Browser" {
+                shape WebBrowser
+            }
+            element "Hexagonal" {
+                shape Hexagon
+            }
+            element "Fila" {
+                shape Pipe
+            }
+            element "Banco de Dados" {
+                shape Cylinder
             }
         }
     }
