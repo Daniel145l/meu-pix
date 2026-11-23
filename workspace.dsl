@@ -28,42 +28,22 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
                 tags "Hexagonal"
 
                 # Adapters de Entrada (Driving)
-                accountController = component "Account Controller" "Recebe requisições de consulta de saldo e extrato" "REST Controller" {
-                    tags "Adapter de Entrada"
-                }
-                transferController = component "Transfer Controller" "Recebe solicitações de iniciação de transferência PIX" "REST Controller" {
-                    tags "Adapter de Entrada"
-                }
+                accountController = component "Account Controller" "Recebe requisições de consulta de saldo e extrato" "REST Controller"
+                transferController = component "Transfer Controller" "Recebe solicitações de iniciação de transferência PIX" "REST Controller"
 
                 # Casos de Uso / Domínio
-                accountUseCase = component "Account & Balance Use Case" "Consulta saldo e histórico de movimentações" "Application Service" {
-                    tags "Caso de Uso"
-                }
-                transferPixUseCase = component "Transfer PIX Use Case" "Valida saldo, realiza débito/crédito, liquida e publica eventos" "Domain / Application Service" {
-                    tags "Caso de Uso"
-                }
+                accountUseCase = component "Account & Balance Use Case" "Consulta saldo e histórico de movimentações" "Application Service"
+                transferPixUseCase = component "Transfer PIX Use Case" "Valida saldo, realiza débito/crédito, liquida e publica eventos" "Domain / Application Service"
 
                 # Portas (Interfaces)
-                accountRepoPort = component "Account Repository Port" "Contrato para persistência de contas e saldos" "Port" {
-                    tags "Porta"
-                }
-                bacenSpiPort = component "BACEN SPI / DICT Port" "Contrato para consulta de chave e liquidação no SPI" "Port" {
-                    tags "Porta"
-                }
-                eventPublisherPort = component "Domain Event Publisher Port" "Contrato para publicação de eventos de domínio" "Port" {
-                    tags "Porta"
-                }
+                accountRepoPort = component "Account Repository Port" "Contrato para persistência de contas e saldos" "Port"
+                bacenSpiPort = component "BACEN SPI / DICT Port" "Contrato para consulta de chave e liquidação no SPI" "Port"
+                eventPublisherPort = component "Domain Event Publisher Port" "Contrato para publicação de eventos de domínio" "Port"
 
                 # Adapters de Saída (Driven)
-                pgAccountAdapter = component "PostgreSQL Account Adapter" "Executa operações de contas e transações no banco" "Outbound Adapter" {
-                    tags "Adapter de Saída"
-                }
-                spiDictAdapter = component "SPI / DICT Adapter" "Integra com o simulador externo do SPI / DICT" "Outbound Adapter" {
-                    tags "Adapter de Saída"
-                }
-                brokerPublisherAdapter = component "Message Broker Adapter" "Publica eventos de domínio no broker" "Outbound Adapter" {
-                    tags "Adapter de Saída"
-                }
+                pgAccountAdapter = component "PostgreSQL Account Adapter" "Executa operações de contas e transações no banco" "Outbound Adapter"
+                spiDictAdapter = component "SPI / DICT Adapter" "Integra com o simulador externo do SPI / DICT" "Outbound Adapter"
+                brokerPublisherAdapter = component "Message Broker Adapter" "Publica eventos de domínio no broker" "Outbound Adapter"
 
                 # Fluxos internos — Consulta de Saldo e Extrato
                 accountController -> accountUseCase "Consulta saldo e extrato"
@@ -77,13 +57,6 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
                 bacenSpiPort -> spiDictAdapter "Implementado por"
                 transferPixUseCase -> eventPublisherPort "Publica evento de transferência"
                 eventPublisherPort -> brokerPublisherAdapter "Implementado por"
-
-                # Conexões externas do Core Backend
-                meuPix.webapp -> accountController "Consulta saldo e extrato" "JSON / HTTPS (REST)"
-                meuPix.webapp -> transferController "Solicita transferência PIX" "JSON / HTTPS (REST)"
-                pgAccountAdapter -> meuPix.database "Lê e grava contas e transações" "SQL / TCP"
-                spiDictAdapter -> spi "Consulta chave no DICT e envia ordem ao SPI" "JSON / HTTPS"
-                brokerPublisherAdapter -> meuPix.broker "Publica eventos de domínio" "AMQP"
             }
 
             broker = container "Message Broker" "Fila/tópico de eventos de domínio (ex.: PixEnviado, PixRecebido, ChavePixCadastrada). Desacopla quem produz o evento de quem reage a ele." "RabbitMQ" {
@@ -96,6 +69,15 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
                 tags "Banco de Dados"
             }
         }
+
+        # ---------------------------------------------------------------
+        # Relações — nível de Componente (integrações com containers/sistemas)
+        # ---------------------------------------------------------------
+        meuPix.webapp -> meuPix.coreBackend.accountController "Consulta saldo e extrato" "JSON / HTTPS (REST)"
+        meuPix.webapp -> meuPix.coreBackend.transferController "Solicita transferência PIX" "JSON / HTTPS (REST)"
+        meuPix.coreBackend.pgAccountAdapter -> meuPix.database "Lê e grava contas e transações" "SQL / TCP"
+        meuPix.coreBackend.spiDictAdapter -> spi "Consulta chave no DICT e envia ordem ao SPI" "JSON / HTTPS"
+        meuPix.coreBackend.brokerPublisherAdapter -> meuPix.broker "Publica eventos de domínio" "AMQP"
 
         # ---------------------------------------------------------------
         # Relações — nível de Contexto
