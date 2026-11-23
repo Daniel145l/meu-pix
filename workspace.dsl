@@ -22,6 +22,13 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
 
             webapp = container "Aplicação Web" "Interface (SPA) para consultar saldo e extrato, gerenciar chaves PIX, enviar PIX e visualizar notificações." "Vue.js / TypeScript" {
                 tags "Web Browser"
+
+                dashboardView = component "Tela de Saldo e Extrato" "Exibe saldo atual, extrato e notificações recentes" "Vue Component / View"
+                pixTransferView = component "Tela de Transferência e Chaves PIX" "Formulários para gerenciar chaves PIX e iniciar transferências" "Vue Component / View"
+                httpClient = component "Cliente API REST" "Centraliza chamadas HTTP/JSON para o Core Backend" "Axios / Fetch Service"
+
+                dashboardView -> httpClient "Busca saldo, extrato e notificações"
+                pixTransferView -> httpClient "Envia PIX e gerencia chaves"
             }
 
             coreBackend = container "Core Backend" "Núcleo de negócio em Arquitetura Hexagonal: expõe a API REST (adaptador de entrada) e executa as regras de contas, chaves e transferências PIX. Fala com o mundo externo apenas por portas de saída (repositórios, gateway SPI e publicador de eventos)." "Node.js / Express / TypeScript" {
@@ -63,12 +70,33 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
                 tags "Fila"
             }
 
-            notificationWorker = container "Serviço de Notificações" "Consumidor assíncrono dos eventos de domínio: gera comprovantes e notificações de operações concluídas e as registra para o usuário." "Node.js Worker / TypeScript"
+            notificationWorker = container "Serviço de Notificações" "Consumidor assíncrono dos eventos de domínio: gera comprovantes e notificações de operações concluídas e as registra para o usuário." "Node.js Worker / TypeScript" {
+
+                eventConsumer = component "Consumidor de Eventos PIX" "Escuta eventos PixEnviado / PixRecebido no broker" "AMQP Consumer"
+                receiptGenerator = component "Gerador de Comprovante e Alerta" "Monta o comprovante e a mensagem de operação concluída" "Domain / Application Service"
+                notificationRepo = component "Repositório de Notificações" "Persiste notificações e comprovantes no banco" "Repository / Adapter"
+                notifierSender = component "Emissor de Notificação" "Despacha alerta in-app / e-mail simulado ao usuário" "Notifier Adapter"
+
+                eventConsumer -> receiptGenerator "Encaminha payload do evento"
+                receiptGenerator -> notificationRepo "Salva comprovante e notificação"
+                receiptGenerator -> notifierSender "Dispara entrega ao usuário"
+            }
 
             database = container "Banco de Dados" "Armazena usuários, contas, saldos, chaves PIX, transações (extrato) e notificações." "PostgreSQL (Supabase)" {
                 tags "Banco de Dados"
             }
         }
+
+        # ---------------------------------------------------------------
+        # Relações de Componente — Aplicação Web e Serviço de Notificações
+        # ---------------------------------------------------------------
+        usuario -> meuPix.webapp.dashboardView "Consulta saldo, extrato e notificações" "HTTPS"
+        usuario -> meuPix.webapp.pixTransferView "Gerencia chaves e envia PIX" "HTTPS"
+        meuPix.webapp.httpClient -> meuPix.coreBackend "Envia requisições REST/JSON" "JSON / HTTPS"
+
+        meuPix.broker -> meuPix.notificationWorker.eventConsumer "Entrega eventos PixEnviado / PixRecebido" "AMQP"
+        meuPix.notificationWorker.notificationRepo -> meuPix.database "Grava notificações e comprovantes" "SQL / TCP"
+        meuPix.notificationWorker.notifierSender -> usuario "Envia notificação de operação concluída" "In-app / E-mail (simulado)"
 
         # ---------------------------------------------------------------
         # Relações — nível de Componente (integrações com containers/sistemas)
@@ -96,7 +124,6 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
         meuPix.coreBackend -> spi "Consulta chave no DICT e envia ordem de pagamento ao SPI" "JSON / HTTPS (síncrono)"
         meuPix.notificationWorker -> meuPix.broker "Consome eventos PixEnviado / PixRecebido" "AMQP (assíncrono)"
         meuPix.notificationWorker -> meuPix.database "Registra notificações e comprovantes" "SQL / TCP"
-        meuPix.notificationWorker -> usuario "Envia notificação de operação concluída" "In-app / E-mail (simulado)"
     }
 
     views {
@@ -111,6 +138,16 @@ workspace "Meu Pix - Sistema Bancário e PIX" "Documentação arquitetural (Mode
         }
 
         component meuPix.coreBackend "Componentes_Core_Backend" "Nível 3 (C4) — componentes internos do Core Backend em Arquitetura Hexagonal." {
+            include *
+            autoLayout lr
+        }
+
+        component meuPix.webapp "Componentes_Aplicacao_Web" "Nível 3 (C4) — componentes da interface SPA em Vue.js / TypeScript." {
+            include *
+            autoLayout lr
+        }
+
+        component meuPix.notificationWorker "Componentes_Servico_Notificacoes" "Nível 3 (C4) — componentes do worker assíncrono de notificações." {
             include *
             autoLayout lr
         }
