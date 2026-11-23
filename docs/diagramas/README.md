@@ -1,66 +1,73 @@
-# Diagramas C4 — Meu Pix
+# Meu Pix - Sistema Bancário e PIX
 
-A **fonte oficial** dos diagramas é o arquivo [`workspace.dsl`](../../workspace.dsl) (Structurizr DSL).
-Os diagramas abaixo são uma **cópia em Mermaid** das mesmas visões, só para que possam ser lidos diretamente no GitHub.
-Ao alterar a arquitetura, altere primeiro o `workspace.dsl` e depois replique aqui.
+Repositório oficial do projeto final da disciplina de **Arquitetura de Software**, desenvolvido com foco no domínio de **Sistema Bancário e PIX**.
 
-Como visualizar o DSL (Structurizr Lite), a partir da raiz do repositório:
+## Sobre o Projeto
 
-```bash
-docker run -it --rm -p 8080:8080 -v "$PWD":/usr/local/structurizr structurizr/lite
+O **Meu Pix** é uma carteira digital que simula contas bancárias, gerenciamento de chaves PIX e transferências instantâneas. O sistema foi projetado para permitir que correntistas consultem saldo e extrato, cadastrem e gerenciem chaves PIX, realizem transferências instantâneas de forma segura e recebam notificações assíncronas das operações concluídas.
+
+## Estilo Arquitetural: Arquitetura Hexagonal (Ports and Adapters)
+
+O núcleo da aplicação (**Core Backend**) adota **majoritariamente os princípios da Arquitetura Hexagonal**, complementado por comunicação orientada a eventos para notificações assíncronas.
+
+* **Por que essa escolha?** O domínio de negócio (regras de contas, chaves PIX, validação de saldo e liquidação de transferências) fica completamente isolado de detalhes tecnológicos externos (como frameworks web, bancos de dados, filas de mensageria ou o simulador do SPI/DICT do BACEN).
+* **Vantagens:** Facilidade para testar regras de negócio de forma isolada, baixo acoplamento e flexibilidade para substituir adaptadores de entrada (REST APIs) e de saída (PostgreSQL, RabbitMQ, Gateway SPI/DICT) sem impactar o núcleo da aplicação.
+
+## Funcionalidades Desenvolvidas
+
+O escopo funcional documentado e implementado parcialmente compreende:
+
+1. **Gerenciamento de Contas e Saldo:**
+   * Consulta de saldo em tempo real e visualização do extrato de movimentações.
+2. **Gerenciamento de Chaves PIX:**
+   * Cadastro, listagem e exclusão de chaves PIX vinculadas à conta (CPF, E-mail, Telefone, Chave Aleatória).
+3. **Realização de Transferência PIX:**
+   * Consulta e resolução de chave de destino (incluindo integração simulada com DICT/SPI).
+   * Validação de saldo suficiente e efetivação transacional (débito na origem e crédito no destino).
+4. **Notificações de Operações:**
+   * Publicação de eventos de domínio (`PixEnviado`, `PixRecebido`) e processamento assíncrono para geração de comprovantes e envio de notificações ao usuário.
+
+## Modelagem Arquitetural (C4 Model & Structurizr)
+
+A documentação arquitetural do sistema segue o **Modelo C4** definido como código no arquivo `workspace.dsl` (Structurizr DSL), contemplando os níveis de Contexto, Containers e Componentes.
+
+### Nível 1 — Diagrama de Contexto
+Apresenta o **Meu Pix**, sua interação com o **Usuário do Banco** e a comunicação externa com o **Simulador SPI / DICT (BACEN)**.
+
+![Diagrama de Contexto](../Contexto-dark.png)
+
+### Nível 2 — Diagrama de Containers
+Detalha as unidades executáveis e armazenamentos do sistema: **Aplicação Web** (Vue.js / TypeScript), **Core Backend** (Node.js / Express / TypeScript em Arquitetura Hexagonal), **Message Broker** (RabbitMQ), **Serviço de Notificações** (Node.js Worker / TypeScript) e **Banco de Dados** (PostgreSQL / Supabase).
+
+![Diagrama de Containers](../Containers-dark.png)
+
+### Nível 3 — Diagramas de Componentes
+
+#### Core Backend (Arquitetura Hexagonal)
+Detalha a divisão interna entre **Adapters de Entrada** (Controllers REST), **Casos de Uso** (Application/Domain Services), **Portas** (Interfaces) e **Adapters de Saída** (PostgreSQL, SPI/DICT e Message Broker).
+
+![Diagrama de Componentes - Core Backend](../Componentes_Core_Backend-dark.png)
+
+#### Aplicação Web (SPA)
+Detalha as telas principais (**Tela de Saldo e Extrato**, **Tela de Transferência e Chaves PIX**) e o **Cliente API REST** responsável pela comunicação com o backend.
+
+![Diagrama de Componentes - Aplicação Web](../Componentes_Aplicacao_Web-dark.png)
+
+#### Serviço de Notificações (Worker)
+Detalha o fluxo assíncrono composto pelo **Consumidor de Eventos PIX**, **Gerador de Comprovante e Alerta**, **Repositório de Notificações** e **Emissor de Notificação**.
+
+![Diagrama de Componentes - Serviço de Notificações](../Componentes_Servico_Notificacoes-dark.png)
+
+## Estrutura do Repositório
+
+```
+├── workspace.dsl         # Definição completa dos diagramas C4 (Níveis 1, 2 e 3)
+├── README.md             # Documentação principal do projeto
+├── docs/                 # Decisões arquiteturais e imagens exportadas dos diagramas
+└── src/                  # Código-fonte da aplicação (Implementação Parcial)
 ```
 
-Depois é só abrir http://localhost:8080. Também dá para colar o conteúdo do `workspace.dsl` em https://structurizr.com/dsl.
+## Equipe e Divisão de Atividades
 
----
-
-## Nível 1 — Diagrama de Contexto
-
-**Pergunta que responde:** *o que é o sistema, quem o usa e com quem ele conversa?*
-
-![Diagrama C4 de Contexto](../Contexto-dark.png)
-
-| Elemento | Tipo | Responsabilidade |
-|---|---|---|
-| Usuário do Banco | Pessoa | Correntista: consulta saldo/extrato, cadastra/remove chaves PIX, envia PIX e recebe notificações. |
-| Meu Pix | Sistema (em foco) | Mantém contas, saldos, chaves PIX e transações e aplica as regras de negócio do PIX. |
-| Simulador SPI / DICT (BACEN) | Sistema externo | Simula o diretório de chaves (DICT) e o sistema de liquidação (SPI) do Banco Central, usado quando a chave de destino é de outra instituição. |
-
----
-
-## Nível 2 — Diagrama de Containers
-
-**Pergunta que responde:** *quais são as partes executáveis do sistema, que tecnologia cada uma usa e como elas se comunicam?*
-
-![Diagrama C4 de Containers](../Containers-dark.png)
-
-### Containers e responsabilidades
-
-| Container | Tecnologia | Responsabilidade |
-|---|---|---|
-| Aplicação Web | Vue.js / TypeScript | Interface do usuário. Não tem regra de negócio: só chama a API REST. |
-| Core Backend | Node.js / Express / TypeScript | **Hexágono** do sistema. Os controladores REST são *adaptadores de entrada*; o domínio (Conta, ChavePix, Transação) e os casos de uso ficam no centro; banco, SPI e broker são acessados por *portas de saída* implementadas por adaptadores. |
-| Message Broker | RabbitMQ | Recebe os eventos de domínio publicados pelo Core e os entrega aos consumidores, de forma assíncrona. |
-| Serviço de Notificações | Node.js Worker / TypeScript | Reage aos eventos `PixEnviado`/`PixRecebido`, gera o comprovante e notifica pagador e recebedor. |
-| Banco de Dados | PostgreSQL (Supabase) | Persistência de contas, saldos, chaves PIX, transações e notificações. |
-
-### Mecanismos de comunicação e fluxo de dados
-
-| Origem → Destino | Mecanismo | Síncrono? | Por quê |
-|---|---|---|---|
-| Aplicação Web → Core Backend | REST, JSON sobre HTTPS | Sim | O usuário precisa da resposta na hora (saldo, comprovante). |
-| Core Backend → Banco de Dados | SQL/TCP | Sim | O débito na origem e o crédito no destino precisam ser **atômicos** (mesma transação). |
-| Core Backend → Simulador SPI/DICT | REST, JSON sobre HTTPS | Sim | Só conseguimos confirmar um PIX para outra instituição depois que o SPI liquida a ordem. |
-| Core Backend → Message Broker | AMQP (publish) | **Não** | Notificar é consequência da transferência, não parte dela: se o envio da notificação falhar, o PIX não pode ser desfeito. |
-| Serviço de Notificações → Message Broker | AMQP (consume) | **Não** | Permite adicionar outros consumidores (antifraude, auditoria) sem mexer no Core. |
-
-**Fluxo principal — Enviar PIX (visão de containers):**
-
-1. O usuário informa a chave de destino e o valor na **Aplicação Web**.
-2. A Aplicação Web envia `POST /contas/{id}/pix` ao **Core Backend**.
-3. O Core valida o valor e o saldo, e resolve a chave. Se a chave for do Meu Pix, busca no **Banco de Dados**; se não for, consulta o DICT no **Simulador SPI**.
-4. O Core debita a origem e credita o destino na mesma transação (ou envia a ordem ao SPI, se o destino for externo) e grava a transação no extrato.
-5. O Core devolve o comprovante ao usuário **e** publica `PixEnviado`/`PixRecebido` no **Message Broker**.
-6. O **Serviço de Notificações** consome os eventos, registra as notificações no banco e avisa pagador e recebedor.
-
-> Os diagramas de **Componentes** (nível 3) e **Código** (nível 4) ficam para a entrega de 23/11–24/11.
+* As decisões arquiteturais detalhadas estão documentadas em `docs/DECISOES-ARQUITETURAIS.md`.
+* A divisão de tarefas e o acompanhamento do desenvolvimento são gerenciados através das *Issues* e *Projects* deste repositório no GitHub.
