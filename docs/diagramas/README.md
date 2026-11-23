@@ -18,23 +18,7 @@ Depois é só abrir http://localhost:8080. Também dá para colar o conteúdo do
 
 **Pergunta que responde:** *o que é o sistema, quem o usa e com quem ele conversa?*
 
-```mermaid
-flowchart LR
-    usuario["👤 <b>Usuário do Banco</b><br/><i>[Pessoa]</i><br/>Consulta saldo e extrato, gerencia chaves PIX,<br/>transfere e recebe notificações"]
-    meuPix["<b>Meu Pix</b><br/><i>[Sistema de Software]</i><br/>Carteira digital que simula contas,<br/>chaves PIX e transferências instantâneas"]
-    spi["<b>Simulador SPI / DICT (BACEN)</b><br/><i>[Sistema Externo]</i><br/>Resolve chaves de outras instituições<br/>e liquida ordens PIX interbancárias"]
-
-    usuario -- "Consulta saldo/extrato, gerencia<br/>chaves PIX e envia PIX" --> meuPix
-    meuPix -- "Notifica operações concluídas" --> usuario
-    meuPix -- "Resolve chaves de outras instituições<br/>e envia ordens PIX interbancárias" --> spi
-
-    classDef person fill:#08427b,color:#fff,stroke:#052e56
-    classDef system fill:#1168bd,color:#fff,stroke:#0b4884
-    classDef external fill:#999999,color:#fff,stroke:#6b6b6b
-    class usuario person
-    class meuPix system
-    class spi external
-```
+![Diagrama C4 de Contexto](../Contexto-dark.png)
 
 | Elemento | Tipo | Responsabilidade |
 |---|---|---|
@@ -48,37 +32,7 @@ flowchart LR
 
 **Pergunta que responde:** *quais são as partes executáveis do sistema, que tecnologia cada uma usa e como elas se comunicam?*
 
-```mermaid
-flowchart LR
-    usuario["👤 <b>Usuário do Banco</b><br/><i>[Pessoa]</i>"]
-
-    subgraph meuPix["Meu Pix [Sistema de Software]"]
-        direction LR
-        webapp["<b>Aplicação Web</b><br/><i>[Container: Vue.js / TypeScript]</i><br/>SPA: saldo, extrato, chaves,<br/>envio de PIX e notificações"]
-        core{{"<b>Core Backend</b><br/><i>[Container: Node.js / Express / TypeScript]</i><br/>Núcleo hexagonal: API REST +<br/>regras de contas, chaves e PIX"}}
-        broker[["<b>Message Broker</b><br/><i>[Container: RabbitMQ]</i><br/>Eventos de domínio<br/>(PixEnviado, PixRecebido...)"]]
-        worker["<b>Serviço de Notificações</b><br/><i>[Container: Node.js Worker]</i><br/>Consome eventos e gera<br/>notificações/comprovantes"]
-        db[("<b>Banco de Dados</b><br/><i>[Container: PostgreSQL / Supabase]</i><br/>Contas, chaves, transações<br/>e notificações")]
-    end
-
-    spi["<b>Simulador SPI / DICT (BACEN)</b><br/><i>[Sistema Externo]</i>"]
-
-    usuario -- "Acessa pelo navegador<br/>[HTTPS]" --> webapp
-    webapp -- "Chama a API<br/>[JSON/HTTPS - REST]" --> core
-    core -- "Lê e grava contas, chaves<br/>e transações [SQL/TCP]" --> db
-    core -- "Publica eventos de domínio<br/>[AMQP - assíncrono]" --> broker
-    core -- "Consulta chave (DICT) e envia<br/>ordem (SPI) [JSON/HTTPS - síncrono]" --> spi
-    worker -- "Consome PixEnviado / PixRecebido<br/>[AMQP - assíncrono]" --> broker
-    worker -- "Registra notificações<br/>[SQL/TCP]" --> db
-    worker -- "Envia notificação<br/>[In-app / E-mail simulado]" --> usuario
-
-    classDef person fill:#08427b,color:#fff,stroke:#052e56
-    classDef container fill:#438dd5,color:#fff,stroke:#2e6295
-    classDef external fill:#999999,color:#fff,stroke:#6b6b6b
-    class usuario person
-    class webapp,core,broker,worker,db container
-    class spi external
-```
+![Diagrama C4 de Containers](../Containers-dark.png)
 
 ### Containers e responsabilidades
 
